@@ -1,0 +1,229 @@
+---
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+Run this file on the command line with
+$ Rscript -e "library(knitr)" -e 'knit("data_cleaning.Rmd")'
+
+```{r}
+library(baseballDBR)
+library(Lahman)
+library(tidyverse)
+library(GGally)
+```
+
+## Postseason
+
+### Augmenting Postseason with #games and passing that on to BattingPost
+
+```{r}
+SeriesPost <- mutate(Lahman::SeriesPost, GamesInThisRound = wins + losses + ties)
+SeriesPost <- select(SeriesPost, yearID, round, GamesInThisRound)
+BattingPost <- inner_join(Lahman::BattingPost, SeriesPost, by=c("yearID", "round"))
+```
+
+### Compress postseason rounds into one row per year and graph it for final paper
+```{r}
+selected_postseason <- select(Lahman::BattingPost, -c(round, teamID, lgID, playerID)) %>% filter(yearID > 1902)
+grouped_postseason <- group_by(selected_postseason, yearID)
+summarized_postseason <- summarize_all(grouped_postseason, sum)
+summarized_postseason$P_OPS <- OPS(summarized_postseason)
+year_OPS <- select(summarized_postseason, yearID, P_OPS)
+model <- lm(P_OPS ~ yearID, data=year_OPS)
+summary(model)
+ggplot(year_OPS, mapping = aes(x = yearID, y = P_OPS)) +
+  geom_point() +
+  labs(title = "P_OPS over time") + 
+  xlab("Year") +
+  ylab("Postseason OPS") +
+  geom_abline(slope=model[["coefficients"]][["yearID"]], intercept=model[["coefficients"]][["(Intercept)"]])
+```
+
+### Compress postseason rounds into one row per player
+
+Players who appeared in multiple postseason rounds in a year have a row for each round. Which isn't what we want. So we have to sum the counts from the multiple rounds.
+```{r}
+#BattingPost <- filter(BattingPost, playerID=="ripkeca01" | playerID=="anderbr01")
+
+selected_postseason <- select(BattingPost, -c(round, teamID, lgID))
+grouped_postseason <- group_by(selected_postseason, yearID, playerID)
+summarized_postseason <- summarize_all(grouped_postseason, sum)
+summarized_postseason <- rename(summarized_postseason, P_TeamGames=GamesInThisRound)
+nrow(summarized_postseason)
+```
+There are 9479 player-year rows in postseason after collapsing a player's multiple postseason series into 1 row.
+
+### Removing NA from postseason
+
+Now let's see how prevalent NA is in the postseason.
+
+```{r drop_all_nas, warning=TRUE}
+nrow(summarized_postseason %>% na.omit())
+```
+We lose 201 rows if we throw out all the rows with na. But dropping all na's could leave us with a biased dataset if certain types of players have NAs when others don't, so instead let's look at when the na's stop:
+
+```{r}
+summarise_all(summarized_postseason, funs(mean(is.na(.))))
+```
+
+Only 1884 -> 1892 have NAs, which are for CS, HBP, SH, SF, GIDP. 1903 and forward are complete.
+
+```{r}
+postseason_complete_rows <- filter(summarized_postseason, yearID > 1902)
+nrow(postseason_complete_rows)
+```
+
+This is the same number as just dropping all the na's, from the code chunk named drop_all_nas above, which means there are 0 years when some players have na's but others don't.
+
+```{r}
+summarized_postseason_no_na <- na.omit(postseason_complete_rows)
+nrow(summarized_postseason_no_na)
+```
+
+If those two numbers don't match then the earlier 1903 filtering isn't good enough.
+
+```{r}
+summarized_postseason_no_na_at_least_1_AB <- filter(summarized_postseason_no_na, AB > 0)
+nrow(summarized_postseason_no_na_at_least_1_AB)
+summarized_postseason_no_na$P_OPS <- OPS(summarized_postseason_no_na)
+summarized_postseason_no_na <- na.omit(summarized_postseason_no_na)
+nrow(summarized_postseason_no_na)
+```
+
+If those two numbers match then the only reason players have NA after adding OPS is because they had 0 AB.
+
+So we have 6736 postseason rows from 1903 forward. This is on the low side considering our regular season stats aren't complete anywhere close to 1903.
+
+
+## Regular season
+
+```{r}
+nrow(Batting)
+```
+
+### Fixing traded/released players in regular season
+
+How are traded players represented? Willie Mays was traded once midseason.
+```{r}
+#mays <- filter(Lahman::Batting, playerID=="mayswi01", yearID > 1970)
+#mays
+```
+
+The player is only going to play in the postseason for his last team/league (right?), so let's only keep last stint, throw out the rest.
+
+```{r}
+#group_by(mays, playerID, yearID) %>% filter(stint == max(stint))
+```
+
+Ok, that code works for Willie Mays. Now apply it to the whole Batting table and ensure there is only one row per player-year.
+```{r}
+Batting <- group_by(Lahman::Batting, playerID, yearID)
+nrow(Batting)
+only_last_stint <- Batting %>% filter(stint == max(stint))
+Batting_with_rows <- summarize(Batting, rows = n())
+nrow(only_last_stint)
+nrow(Batting_with_rows)
+```
+
+If last two numbers equal, then we're all good so far. And looks like 102816 - 95250 =~ 7500 players played for multiple teams in one season.
+
+### Removing NA from regular season
+
+```{r}
+last_stint_grouped_by_year <- ungroup(only_last_stint) %>% group_by(yearID)
+summarise_all(last_stint_grouped_by_year, funs(sum(is.na(.))))
+```
+
+So it's IBB that we don't have data for most recently. Which is unfortunate. SF and CS probably don't matter that much, but I suspect IBB is a fairly unique and informative signal. Starting in 1955, we have no NAs.
+
+```{r}
+#nrow(inner_join(only_last_stint %>% filter(yearID > 1954), summarized_postseason_no_na, by=c("playerID", "yearID")))
+#nrow(inner_join(only_last_stint %>% filter(yearID > 1938), summarized_postseason_no_na, by=c("playerID", "yearID")))
+#nrow(inner_join(only_last_stint %>% filter(yearID > 1912), summarized_postseason_no_na, by=c("playerID", "yearID")))
+recent_regular_season <- only_last_stint %>% filter(yearID > 1954)
+```
+We still have 5109 rows if we cut off at 1954. If we drop GIDP before 1939 we have 5666, if we drop GIDP before 1913, we have 6480.
+
+### Add sabermetric stats to regular season
+
+```{r}
+augmented_recent_regular_season <- recent_regular_season
+nrow(augmented_recent_regular_season)
+augmented_recent_regular_season$OBP <- OBP(augmented_recent_regular_season)
+nrow(na.omit(augmented_recent_regular_season))
+augmented_recent_regular_season$SLG <- SLG(augmented_recent_regular_season)
+nrow(na.omit(augmented_recent_regular_season))
+augmented_recent_regular_season$ISO <- ISO(augmented_recent_regular_season)
+nrow(na.omit(augmented_recent_regular_season))
+augmented_recent_regular_season <- mutate(augmented_recent_regular_season, SBPerG = SB / G)
+nrow(na.omit(augmented_recent_regular_season))
+#augmented_recent_regular_season <- group_by(ungroup(augmented_recent_regular_season), yearID)
+#summarise_all(augmented_recent_regular_season, funs(mean(is.na(.))))
+augmented_recent_regular_season <- na.omit(augmented_recent_regular_season)
+```
+Only OBP and SLG that give NA results, presumably because OBP requires PA > 0, and OBP and the rest require AB > 0.
+
+## Join and finalize
+
+### Join regular and post
+
+```{r}
+aug_bat <- inner_join(augmented_recent_regular_season, summarized_postseason_no_na, by=c("playerID", "yearID"))
+aug_bat <- ungroup(ungroup(aug_bat))
+freshly_joined_batting <- aug_bat
+```
+
+### Some processing on joint table
+
+Make lgID numeric, drop most postseason columns. Generate P_PlayedMuchLess.
+
+```{r}
+aug_bat <- freshly_joined_batting
+aug_bat <- rename(aug_bat, Games=G.x)
+aug_bat <- rename(aug_bat, P_Games=G.y)
+aug_bat$lgID = ifelse(freshly_joined_batting$lgID=="AL",1,0)
+aug_bat <- select(aug_bat, -ends_with(".y"))
+cutoff_percent = 0.7
+aug_bat <-
+  mutate(aug_bat, P_PlayedMuchLess = cutoff_percent > ((P_Games / P_TeamGames) / (Games / 162)))
+```
+
+### Join with some player biographical stats
+
+And do some more cleaning/processing
+
+```{r}
+my_master <- select(Master, playerID, birthYear, weight, height, bats)
+raw_final_table <- inner_join(aug_bat, my_master, by=c("playerID"))
+raw_final_table$bats <- as.numeric(raw_final_table$bats)
+raw_final_table$P_PlayedMuchLess = as.numeric(raw_final_table$P_PlayedMuchLess)
+```
+
+### Do train/test split
+Drop many columns, generate age column.
+
+```{r}
+cleaned_joint_data <- mutate(raw_final_table, age=yearID-birthYear)
+cleaned_joint_data <- select(cleaned_joint_data, lgID, Games, OBP, SLG, ISO, SBPerG, weight, height, bats, age, P_OPS, P_PlayedMuchLess)
+
+set.seed(123)
+training_indices <- sample(nrow(cleaned_joint_data), 0.8*nrow(cleaned_joint_data))
+training_data <- cleaned_joint_data[training_indices, ]
+test_data <- cleaned_joint_data[-training_indices, ]
+mean(training_data$P_PlayedMuchLess)
+training_data
+```
+```{r}
+training_OPS <- select(training_data, -P_PlayedMuchLess)
+write.csv(training_OPS, file = "training_ops.csv", row.names=FALSE)
+testing_OPS <- select(test_data, -P_PlayedMuchLess)
+write.csv(testing_OPS, file = "testing_ops.csv", row.names=FALSE)
+
+training_OPS <- select(training_data, -P_OPS)
+write.csv(training_OPS, file = "training_PlayingTime.csv", row.names=FALSE)
+testing_OPS <- select(test_data, -P_OPS)
+write.csv(testing_OPS, file = "testing_PlayingTime.csv", row.names=FALSE)
+```
