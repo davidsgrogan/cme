@@ -13,6 +13,7 @@ library(baseballDBR)
 library(Lahman)
 library(tidyverse)
 library(GGally)
+#library(mltools) # For one_hot. But it gives the usual unhelpful crap R error message
 ```
 
 ## Postseason
@@ -25,23 +26,6 @@ SeriesPost <- select(SeriesPost, yearID, round, GamesInThisRound)
 BattingPost <- inner_join(Lahman::BattingPost, SeriesPost, by=c("yearID", "round"))
 ```
 
-### Compress postseason rounds into one row per year and graph it for final paper
-```{r}
-selected_postseason <- select(Lahman::BattingPost, -c(round, teamID, lgID, playerID)) %>% filter(yearID > 1902)
-grouped_postseason <- group_by(selected_postseason, yearID)
-summarized_postseason <- summarize_all(grouped_postseason, sum)
-summarized_postseason$P_OPS <- OPS(summarized_postseason)
-year_OPS <- select(summarized_postseason, yearID, P_OPS)
-model <- lm(P_OPS ~ yearID, data=year_OPS)
-summary(model)
-ggplot(year_OPS, mapping = aes(x = yearID, y = P_OPS)) +
-  geom_point() +
-  labs(title = "P_OPS over time") + 
-  xlab("Year") +
-  ylab("Postseason OPS") +
-  geom_abline(slope=model[["coefficients"]][["yearID"]], intercept=model[["coefficients"]][["(Intercept)"]])
-```
-
 ### Compress postseason rounds into one row per player
 
 Players who appeared in multiple postseason rounds in a year have a row for each round. Which isn't what we want. So we have to sum the counts from the multiple rounds.
@@ -51,7 +35,6 @@ Players who appeared in multiple postseason rounds in a year have a row for each
 selected_postseason <- select(BattingPost, -c(round, teamID, lgID))
 grouped_postseason <- group_by(selected_postseason, yearID, playerID)
 summarized_postseason <- summarize_all(grouped_postseason, sum)
-summarized_postseason <- rename(summarized_postseason, P_TeamGames=GamesInThisRound)
 nrow(summarized_postseason)
 ```
 There are 9479 player-year rows in postseason after collapsing a player's multiple postseason series into 1 row.
@@ -128,7 +111,7 @@ nrow(only_last_stint)
 nrow(Batting_with_rows)
 ```
 
-If last two numbers equal, then we're all good so far. And looks like 102816 - 95250 =~ 7500 players played for multiple teams in one season.
+If last two numbers equal, then we're all good so far. And looks like 102816 - 95250 =~ 7500 players played for multiple teams in one season. 2020-05-24: 7500 assumes players only played for 2 teams in a season, right? So 7500 is probably more like 7000.
 
 ### Removing NA from regular season
 
@@ -140,9 +123,9 @@ summarise_all(last_stint_grouped_by_year, funs(sum(is.na(.))))
 So it's IBB that we don't have data for most recently. Which is unfortunate. SF and CS probably don't matter that much, but I suspect IBB is a fairly unique and informative signal. Starting in 1955, we have no NAs.
 
 ```{r}
-#nrow(inner_join(only_last_stint %>% filter(yearID > 1954), summarized_postseason_no_na, by=c("playerID", "yearID")))
-#nrow(inner_join(only_last_stint %>% filter(yearID > 1938), summarized_postseason_no_na, by=c("playerID", "yearID")))
-#nrow(inner_join(only_last_stint %>% filter(yearID > 1912), summarized_postseason_no_na, by=c("playerID", "yearID")))
+nrow(inner_join(only_last_stint %>% filter(yearID > 1954), summarized_postseason_no_na, by=c("playerID", "yearID")))
+nrow(inner_join(only_last_stint %>% filter(yearID > 1938), summarized_postseason_no_na, by=c("playerID", "yearID")))
+nrow(inner_join(only_last_stint %>% filter(yearID > 1912), summarized_postseason_no_na, by=c("playerID", "yearID")))
 recent_regular_season <- only_last_stint %>% filter(yearID > 1954)
 ```
 We still have 5109 rows if we cut off at 1954. If we drop GIDP before 1939 we have 5666, if we drop GIDP before 1913, we have 6480.
@@ -151,20 +134,34 @@ We still have 5109 rows if we cut off at 1954. If we drop GIDP before 1939 we ha
 
 ```{r}
 augmented_recent_regular_season <- recent_regular_season
-nrow(augmented_recent_regular_season)
-augmented_recent_regular_season$OBP <- OBP(augmented_recent_regular_season)
+#augmented_recent_regular_season <- battingStats(data=recent_regular_season)
+#is.na(augmented_recent_regular_season)
+```
+
+
+```{r}
 nrow(na.omit(augmented_recent_regular_season))
-augmented_recent_regular_season$SLG <- SLG(augmented_recent_regular_season)
+augmented_recent_regular_season$Hand_OBP <- OBP(augmented_recent_regular_season)
+paste("after OBP", nrow(na.omit(augmented_recent_regular_season)))
+augmented_recent_regular_season$Hand_SLG <- SLG(augmented_recent_regular_season)
+paste("after SLG", nrow(na.omit(augmented_recent_regular_season)))
+augmented_recent_regular_season$Hand_BABIP <- BABIP(augmented_recent_regular_season)
+paste("after BABIP, which requires H", nrow(na.omit(augmented_recent_regular_season)))
+augmented_recent_regular_season$Hand_ISO <- ISO(augmented_recent_regular_season)
 nrow(na.omit(augmented_recent_regular_season))
-augmented_recent_regular_season$ISO <- ISO(augmented_recent_regular_season)
-nrow(na.omit(augmented_recent_regular_season))
-augmented_recent_regular_season <- mutate(augmented_recent_regular_season, SBPerG = SB / G)
+augmented_recent_regular_season <- mutate(augmented_recent_regular_season, Hand_SBPerG = SB / G)
 nrow(na.omit(augmented_recent_regular_season))
 #augmented_recent_regular_season <- group_by(ungroup(augmented_recent_regular_season), yearID)
 #summarise_all(augmented_recent_regular_season, funs(mean(is.na(.))))
 augmented_recent_regular_season <- na.omit(augmented_recent_regular_season)
 ```
-Only OBP and SLG that give NA results, presumably because OBP requires PA > 0, and OBP and the rest require AB > 0.
+Only OBP and SLG that give NA results.
+OBP requires H > 0
+
+presumably because OBP requires PA > 0, and OBP and the rest require AB > 0.
+
+OBP goes from 63146 to 49469.
+SLG goes from 49469 to 49330.
 
 ## Join and finalize
 
@@ -178,17 +175,17 @@ freshly_joined_batting <- aug_bat
 
 ### Some processing on joint table
 
-Make lgID numeric, drop most postseason columns. Generate P_PlayedMuchLess.
+Turn lgID into AL boolean
+Simplify "stint" into newteam boolean
+drop most postseason columns.
 
 ```{r}
 aug_bat <- freshly_joined_batting
 aug_bat <- rename(aug_bat, Games=G.x)
-aug_bat <- rename(aug_bat, P_Games=G.y)
-aug_bat$lgID = ifelse(freshly_joined_batting$lgID=="AL",1,0)
+aug_bat$AL = ifelse(freshly_joined_batting$lgID=="AL",1,0)
+aug_bat$SameTeam = ifelse(aug_bat$stint==1, 1, 0)
 aug_bat <- select(aug_bat, -ends_with(".y"))
-cutoff_percent = 0.7
-aug_bat <-
-  mutate(aug_bat, P_PlayedMuchLess = cutoff_percent > ((P_Games / P_TeamGames) / (Games / 162)))
+aug_bat <- select(aug_bat, -GamesInThisRound, -lgID, -stint)
 ```
 
 ### Join with some player biographical stats
@@ -198,32 +195,22 @@ And do some more cleaning/processing
 ```{r}
 my_master <- select(Master, playerID, birthYear, weight, height, bats)
 raw_final_table <- inner_join(aug_bat, my_master, by=c("playerID"))
-raw_final_table$bats <- as.numeric(raw_final_table$bats)
-raw_final_table$P_PlayedMuchLess = as.numeric(raw_final_table$P_PlayedMuchLess)
 ```
 
-### Do train/test split
-Drop many columns, generate age column.
+
+### One-hot, add Age, drop many columns
 
 ```{r}
 cleaned_joint_data <- mutate(raw_final_table, age=yearID-birthYear)
-cleaned_joint_data <- select(cleaned_joint_data, lgID, Games, OBP, SLG, ISO, SBPerG, weight, height, bats, age, P_OPS, P_PlayedMuchLess)
-
-set.seed(123)
-training_indices <- sample(nrow(cleaned_joint_data), 0.8*nrow(cleaned_joint_data))
-training_data <- cleaned_joint_data[training_indices, ]
-test_data <- cleaned_joint_data[-training_indices, ]
-mean(training_data$P_PlayedMuchLess)
-training_data
+cleaned_joint_data <- mutate(cleaned_joint_data, bats_right = ifelse(bats=='R', 1, 0))
+cleaned_joint_data <- mutate(cleaned_joint_data, bats_switch = ifelse(bats=='B', 1, 0))
+cleaned_joint_data <- rename_at(cleaned_joint_data, vars(ends_with(".x")), funs(substr(., 1, nchar(.) - 2))) # I hate R
+cleaned_joint_data <- select(cleaned_joint_data, -c(playerID, yearID, teamID, birthYear, bats))
 ```
-```{r}
-training_OPS <- select(training_data, -P_PlayedMuchLess)
-write.csv(training_OPS, file = "training_ops.csv", row.names=FALSE)
-testing_OPS <- select(test_data, -P_PlayedMuchLess)
-write.csv(testing_OPS, file = "testing_ops.csv", row.names=FALSE)
 
-training_OPS <- select(training_data, -P_OPS)
-write.csv(training_OPS, file = "training_PlayingTime.csv", row.names=FALSE)
-testing_OPS <- select(test_data, -P_OPS)
-write.csv(testing_OPS, file = "testing_PlayingTime.csv", row.names=FALSE)
+I'll do train/test split in python
+
+```{r}
+filename = paste0("all_data_v", packageVersion("Lahman"), ".csv")
+write.csv(cleaned_joint_data, file = filename, row.names=FALSE)
 ```
