@@ -24,69 +24,98 @@ assert len(all_data.index) == 5295, len(all_data.index)
 
 print("csv shape =", all_data.shape)
 
-num_train_samples = 3840 # 30 * 128
+num_train_samples = 3840  # 30 * 128
 num_val_samples = 1055
 num_test_samples = 400
 
-assert ((num_train_samples + num_val_samples + num_test_samples) ==
-        len(all_data.index)), len(all_data.index)
+assert ((num_train_samples + num_val_samples + num_test_samples) == len(
+    all_data.index)), len(all_data.index)
 
 train_set = all_data.sample()
 
 X_train, X_val_test = train_test_split(all_data,
-                                                  test_size=num_val_samples+num_test_samples,
-                                                  random_state=35,
-                                                  shuffle=True)
+                                       test_size=num_val_samples +
+                                       num_test_samples,
+                                       random_state=35,
+                                       shuffle=True)
 #%%
 
 # Keras
 model = Sequential()
-model.add(layers.Conv1D(filters=40, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal',
-                        input_shape=(X_train.shape[1], 1)))
+model.add(
+    layers.Conv1D(filters=40,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal',
+                  input_shape=(X_train.shape[1], 1)))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
-model.add(layers.Conv1D(filters=50, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
+model.add(
+    layers.Conv1D(filters=50,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
-model.add(layers.Conv1D(filters=60, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
-model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
-
-model.add(keras.layers.MaxPooling1D(pool_size=2))
-
-model.add(layers.Conv1D(filters=60, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
-model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
-
-model.add(layers.Conv1D(filters=60, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
-model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
-
-model.add(keras.layers.MaxPooling1D(pool_size=2))
-
-model.add(layers.Conv1D(filters=80, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
+model.add(
+    layers.Conv1D(filters=60,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
 model.add(keras.layers.MaxPooling1D(pool_size=2))
 
-model.add(layers.Conv1D(filters=100, kernel_size=3, strides=2,
-                        activation=None, use_bias=False,
-                        kernel_initializer='he_normal'))
+model.add(
+    layers.Conv1D(filters=60,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
+model.add(layers.BatchNormalization())
+model.add(layers.LeakyReLU(alpha=0.01))
+
+model.add(
+    layers.Conv1D(filters=60,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
+model.add(layers.BatchNormalization())
+model.add(layers.LeakyReLU(alpha=0.01))
+
+model.add(keras.layers.MaxPooling1D(pool_size=2))
+
+model.add(
+    layers.Conv1D(filters=80,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
+model.add(layers.BatchNormalization())
+model.add(layers.LeakyReLU(alpha=0.01))
+
+model.add(keras.layers.MaxPooling1D(pool_size=2))
+
+model.add(
+    layers.Conv1D(filters=100,
+                  kernel_size=3,
+                  strides=2,
+                  activation=None,
+                  use_bias=False,
+                  kernel_initializer='he_normal'))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
@@ -94,8 +123,11 @@ model.add(keras.layers.MaxPooling1D(pool_size=2))
 
 model.add(layers.Flatten())
 
-model.add(layers.Dense(40, activation=None, use_bias=False,
-                       kernel_initializer='he_normal'))
+model.add(
+    layers.Dense(40,
+                 activation=None,
+                 use_bias=False,
+                 kernel_initializer='he_normal'))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
@@ -106,8 +138,9 @@ model.compile(optimizer=adam_optimizer,
               loss='categorical_crossentropy',
               metrics=['accuracy'])
 
-keras.utils.plot_model(
-    model, to_file='test_keras_plot_model.png', show_shapes=True)
+keras.utils.plot_model(model,
+                       to_file='test_keras_plot_model.png',
+                       show_shapes=True)
 # display(IPython.display.Image('test_keras_plot_model.png'))
 print(model.summary())
 print("Just printed model summary")
@@ -118,7 +151,10 @@ start_time = time.time()
 # But the CNN has input size 11025, so we have to reduce the batch_size or the
 # GPU runs out of memory.
 tensor_board = keras.callbacks.TensorBoard(histogram_freq=1)
-history_object = model.fit(X_train, y_train, epochs=25, batch_size=64,
+history_object = model.fit(X_train,
+                           y_train,
+                           epochs=25,
+                           batch_size=64,
                            verbose=2,
                            callbacks=[tensor_board],
                            shuffle=True,
