@@ -127,8 +127,12 @@ nrow(inner_join(only_last_stint %>% filter(yearID > 1954), summarized_postseason
 nrow(inner_join(only_last_stint %>% filter(yearID > 1938), summarized_postseason_no_na, by=c("playerID", "yearID")))
 nrow(inner_join(only_last_stint %>% filter(yearID > 1912), summarized_postseason_no_na, by=c("playerID", "yearID")))
 recent_regular_season <- only_last_stint %>% filter(yearID > 1954)
+
+#recent_regular_season <- select(recent_regular_season, -GIDP, -CS, -IBB, -SF)
 ```
-We still have 5109 rows if we cut off at 1954. If we drop GIDP before 1939 we have 5666, if we drop GIDP before 1913, we have 6480.
+Keep >= 1955: 5109 rows
+Keep >= 1939: 5666 rows. Drop CS, IBB, SF. Keep GIDP. But we need SF for BABIP.
+Keep >= 1913: 6480 rows. Drop GIDP in addition.
 
 ### Add sabermetric stats to regular season
 
@@ -170,19 +174,41 @@ SLG goes from 49469 to 49330.
 ```{r}
 aug_bat <- inner_join(augmented_recent_regular_season, summarized_postseason_no_na, by=c("playerID", "yearID"))
 aug_bat <- ungroup(ungroup(aug_bat))
-freshly_joined_batting <- aug_bat
+fresh_joined_batting <- aug_bat
 ```
 
-### Some processing on joint table
+### Drop low-AB players
+```{r}
+a <- tibble(rows=0, sd=0)
+#for (min_AB in seq(1,10)) {
+for (min_AB in 6) { # I settled on 6
+  AB_filter_joined <- fresh_joined_batting
+  nrow(AB_filter_joined)
+  sd(AB_filter_joined$P_OPS)
+  AB_filter_joined <- filter(AB_filter_joined, AB.x >= min_AB)
+  #nrow(AB_filter_joined)
+  #sd(AB_filter_joined$P_OPS)
+  AB_filter_joined <- filter(AB_filter_joined, AB.y >= min_AB)
+  n = nrow(AB_filter_joined)
+  s = sd(AB_filter_joined$P_OPS)
+  a <- add_row(a,rows=n, sd=s)
+}
+
+a <- a[-1,]
+#qplot(seq(1,10), a$rows)
+#qplot(seq(1,10), a$sd)
+```
+
+### First cleanup of joint table
 
 Turn lgID into AL boolean
 Simplify "stint" into newteam boolean
 drop most postseason columns.
 
 ```{r}
-aug_bat <- freshly_joined_batting
+aug_bat <- AB_filter_joined
 aug_bat <- rename(aug_bat, Games=G.x)
-aug_bat$AL = ifelse(freshly_joined_batting$lgID=="AL",1,0)
+aug_bat$AL = ifelse(aug_bat$lgID=="AL",1,0)
 aug_bat$SameTeam = ifelse(aug_bat$stint==1, 1, 0)
 aug_bat <- select(aug_bat, -ends_with(".y"))
 aug_bat <- select(aug_bat, -GamesInThisRound, -lgID, -stint)
@@ -211,6 +237,6 @@ cleaned_joint_data <- select(cleaned_joint_data, -c(playerID, yearID, teamID, bi
 I'll do train/test split in python
 
 ```{r}
-filename = paste0("all_data_v", packageVersion("Lahman"), ".csv")
+filename = paste0("all_data_v", packageVersion("Lahman"), "_min_", min_AB,"_AB.csv")
 write.csv(cleaned_joint_data, file = filename, row.names=FALSE)
 ```
