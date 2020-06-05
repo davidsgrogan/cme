@@ -26,26 +26,19 @@ tf.random.set_seed(345)
 random.set_seed(345)
 
 # %%
-all_data = pd.read_csv('all_data_v7.0.1.csv')
-assert len(all_data.index) == 5295, len(all_data.index)
+#all_data = pd.read_csv('all_data_v7.0.1.csv')
+all_data = pd.read_csv('all_data_v7.0.1_min_6_AB.csv')
 
 print("csv shape =", all_data.shape)
 
-num_train_samples = 3840  # 30 * 128
-num_val_samples = 1055
-num_test_samples = 400
-
-assert ((num_train_samples + num_val_samples + num_test_samples) == len(
-    all_data.index)), len(all_data.index)
-
+# 70/20/10 split.
 train_set, val_test_set = train_test_split(all_data,
-                                           test_size=num_val_samples +
-                                           num_test_samples,
+                                           test_size=0.3,
                                            random_state=35,
                                            shuffle=True)
 
 val_set, test_set = train_test_split(val_test_set,
-                                     test_size=num_test_samples,
+                                     test_size=0.33333333,
                                      random_state=36)
 
 val_test_set = None
@@ -65,6 +58,8 @@ test_X, test_y = split_X_y(test_set)
 train_set = None
 val_set = None
 test_set = None
+
+print("training on %d columns" % len(train_X.columns), list(train_X.columns))
 
 #%%
 
