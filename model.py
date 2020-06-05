@@ -101,7 +101,7 @@ tensor_board = TensorBoard(histogram_freq=1)
 history_object = model.fit(
     train_X,
     train_y,
-    epochs=300,
+    epochs=1000,
     batch_size=64,
     verbose=2,
     #callbacks=[tensor_board],
