@@ -23,11 +23,11 @@ import sys
 # https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
 np.random.seed(345)
 tf.random.set_seed(345)
-random.set_seed(345)
+random.seed(345)
 
 # %%
 #all_data = pd.read_csv('all_data_v7.0.1.csv')
-all_data = pd.read_csv('all_data_v7.0.1_min_6_AB.csv')
+all_data = pd.read_csv('all_data_v7.0.1_min_10_AB.csv')
 
 print("csv shape =", all_data.shape)
 
