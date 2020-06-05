@@ -6,6 +6,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import numpy as np
 from sklearn.model_selection import train_test_split
+import sklearn.preprocessing as preprocess
 import pandas as pd
 import tensorflow as tf
 import tensorflow.keras.layers as layers
@@ -24,6 +25,12 @@ import sys
 np.random.seed(345)
 tf.random.set_seed(345)
 random.seed(345)
+
+# %%
+
+X = np.array([1,2,3,4,5,6,7,8,9,10,1000])
+preprocess.robust_scale(X)
+preprocess.scale(X)
 
 # %%
 #all_data = pd.read_csv('all_data_v7.0.1.csv')
