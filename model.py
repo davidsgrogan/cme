@@ -30,6 +30,7 @@ random.seed(345)
 
 X = np.array([1,2,3,4,5,6,7,8,9,10,1000])
 preprocess.robust_scale(X)
+preprocess.robust_scale(X, quantile_range=(10,90))
 preprocess.scale(X)
 
 # %%
@@ -87,7 +88,9 @@ model.add(layers.Dense(20, activation=None, kernel_initializer='he_normal'))
 model.add(layers.BatchNormalization())
 model.add(layers.LeakyReLU(alpha=0.01))
 
-model.add(layers.Dense(1, activation=None))
+model.add(layers.Dense(1, activation='linear'))
+#model.add(layers.Dense(1, activation='linear', W_constraint=nonneg()))
+#model.add(layers.LeakyReLU(alpha=0.1))
 
 adam_optimizer = optimizers.Adam(lr=0.0001)
 model.compile(optimizer=adam_optimizer, loss='mse', metrics=['mse'])
@@ -108,7 +111,7 @@ tensor_board = TensorBoard(histogram_freq=1)
 history_object = model.fit(
     train_X,
     train_y,
-    epochs=1000,
+    epochs=500,
     batch_size=64,
     verbose=2,
     #callbacks=[tensor_board],
@@ -121,7 +124,7 @@ print("%d seconds to train the model" % (time.time() - start_time))
 # %%
 
 # Plot training & validation loss values
-omit_first = 10
+omit_first = 20
 plt.plot(history_object.history['mse'][omit_first:])
 plt.plot(history_object.history['val_mse'][omit_first:])
 plt.ylabel('Loss')
