@@ -181,7 +181,7 @@ fresh_joined_batting <- aug_bat
 ```{r}
 a <- tibble(rows=0, sd=0)
 #for (min_AB in seq(1,10)) {
-for (min_AB in 6) { # I settled on 6
+for (min_AB in 10) {
   AB_filter_joined <- fresh_joined_batting
   nrow(AB_filter_joined)
   sd(AB_filter_joined$P_OPS)
@@ -233,6 +233,35 @@ cleaned_joint_data <- mutate(cleaned_joint_data, bats_switch = ifelse(bats=='B',
 cleaned_joint_data <- rename_at(cleaned_joint_data, vars(ends_with(".x")), funs(substr(., 1, nchar(.) - 2))) # I hate R
 cleaned_joint_data <- select(cleaned_joint_data, -c(playerID, yearID, teamID, birthYear, bats))
 ```
+
+```{r}
+
+fudge = 3
+cleaned_joint_data$HBP = log(fudge + cleaned_joint_data$HBP)
+cleaned_joint_data$SB = log(fudge + cleaned_joint_data$SB)
+cleaned_joint_data$X3B = log(fudge + cleaned_joint_data$X3B)
+cleaned_joint_data$IBB = log(fudge + cleaned_joint_data$IBB)
+cleaned_joint_data$CS = log(fudge + cleaned_joint_data$CS)
+cleaned_joint_data$SH = log(fudge + cleaned_joint_data$SH)
+
+# https://stackoverflow.com/questions/48507378/plotting-distributions-of-all-columns-in-an-r-data-frame
+library(cowplot)
+my_plots <- lapply(names(cleaned_joint_data), function(var_x){
+  p <- 
+    ggplot(cleaned_joint_data) +
+    aes_string(var_x)
+
+  if(is.numeric(cleaned_joint_data[[var_x]])) {
+    p <- p + geom_density()
+
+  } else {
+    p <- p + geom_bar()
+  }
+
+})
+plot_grid(plotlist = my_plots)
+```
+
 
 I'll do train/test split in python
 
