@@ -9,10 +9,10 @@ from sklearn.model_selection import train_test_split
 import sklearn.preprocessing as preprocess
 import pandas as pd
 import tensorflow as tf
-import tensorflow.keras.layers as layers
-from tensorflow.keras.models import Sequential
-import tensorflow.keras.optimizers as optimizers
-from tensorflow.keras.callbacks import TensorBoard
+import keras.layers as layers
+from keras.models import Sequential
+import keras.optimizers as optimizers
+from keras.callbacks import TensorBoard
 
 import matplotlib.pyplot as plt
 import IPython.display
@@ -23,7 +23,7 @@ import sys
 
 # https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
 np.random.seed(345)
-tf.random.set_seed(345)
+tf.set_random_seed(345)
 random.seed(345)
 
 # %%
@@ -71,22 +71,18 @@ print("training on %d columns" % len(train_X.columns), list(train_X.columns))
 
 #%%
 
-# Keras
 model = Sequential()
 
-model.add(layers.InputLayer(input_shape=train_X.shape[1]))
+# Switching from LRelu to Relu made validation performance a little worse and training slower.
 
-model.add(layers.Dense(60, activation=None, kernel_initializer='he_normal'))
+model.add(layers.Dense(60, activation='relu', kernel_initializer='he_normal', use_bias=True, input_shape=(train_X.shape[1],)))
 model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
 
-model.add(layers.Dense(20, activation=None, kernel_initializer='he_normal'))
+model.add(layers.Dense(20, activation='relu', kernel_initializer='he_normal', use_bias=True))
 model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
 
-model.add(layers.Dense(20, activation=None, kernel_initializer='he_normal'))
+model.add(layers.Dense(20, activation='relu', kernel_initializer='he_normal', use_bias=True))
 model.add(layers.BatchNormalization())
-model.add(layers.LeakyReLU(alpha=0.01))
 
 model.add(layers.Dense(1, activation='linear'))
 #model.add(layers.Dense(1, activation='linear', W_constraint=nonneg()))
@@ -108,27 +104,50 @@ start_time = time.time()
 
 tensor_board = TensorBoard(histogram_freq=1)
 
+np.random.seed(345)
+tf.set_random_seed(123)
+random.seed(345)
+
 history_object = model.fit(
     train_X,
     train_y,
-    epochs=500,
+    epochs=300,
     batch_size=64,
     verbose=2,
     #callbacks=[tensor_board],
     shuffle=True,
-    validation_data=(val_X, val_y))
+    validation_data=(val_X, val_y)
+    )
 print("%d seconds to train the model" % (time.time() - start_time))
 
-#model.save("cnn_model.h5")
+os.remove("model.h5")
+model.save("model.h5")
 
 # %%
 
 # Plot training & validation loss values
-omit_first = 20
-plt.plot(history_object.history['mse'][omit_first:])
-plt.plot(history_object.history['val_mse'][omit_first:])
+omit_first = 40
+plt.plot(history_object.history['mean_squared_error'][omit_first:])
+plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
 plt.legend(['Train', 'Validation'], loc='upper right')
 plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
+
+#%%
+import deeplift
+from deeplift.conversion import kerasapi_conversion as kc
+
+reference = np.full(shape=(train_X.shape[1],), fill_value=0.5)
+
+deeplift_model = kc.convert_model_from_saved_files("model.h5")
+deeplift_contribs_func = deeplift_model.get_target_contribs_func(
+                            find_scores_layer_idx=0,
+                            target_layer_idx=-1)
+#%%
+scores = deeplift_contribs_func(task_idx=0,
+                                         input_data_list=[train_X.iloc[0].to_numpy().reshape(1,29)],
+                                         input_references_list=[reference.reshape(1,29)],
+                                         batch_size=1,
+                                         progress_update=1)
