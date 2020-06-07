@@ -38,8 +38,18 @@ preprocess.scale(X)
 #all_data = pd.read_csv('all_data_v7.0.1.csv')
 all_data = pd.read_csv('all_data_v7.0.1_min_10_AB.csv')
 
+#%%
 print("csv shape =", all_data.shape)
 
+# I guess MinMaxScaler would be a no-op on binary columns.
+binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
+dont_standardize = set([*binary_columns, "P_OPS"])
+do_standardize = set(all_data.columns.to_list()) - dont_standardize
+
+scaler = preprocess.MinMaxScaler()
+all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+
+#%%
 # 70/20/10 split.
 train_set, val_test_set = train_test_split(all_data,
                                            test_size=0.3,
