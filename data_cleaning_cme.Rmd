@@ -236,7 +236,7 @@ cleaned_joint_data <- select(cleaned_joint_data, -c(playerID, yearID, teamID, bi
 
 ```{r}
 
-fudge = 3
+fudge = 5
 cleaned_joint_data$HBP = log(fudge + cleaned_joint_data$HBP)
 cleaned_joint_data$SB = log(fudge + cleaned_joint_data$SB)
 cleaned_joint_data$X3B = log(fudge + cleaned_joint_data$X3B)
