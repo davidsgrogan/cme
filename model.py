@@ -47,7 +47,7 @@ dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
 scaler = preprocess.MinMaxScaler()
-#all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 #%%
 # 70/20/10 split.
