@@ -29,10 +29,10 @@ random.seed(345)
 
 # %%
 
-X = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1000])
-preprocess.robust_scale(X)
-preprocess.robust_scale(X, quantile_range=(10, 90))
-preprocess.scale(X)
+# X = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1000])
+# preprocess.robust_scale(X)
+# preprocess.robust_scale(X, quantile_range=(10, 90))
+# preprocess.scale(X)
 
 # %%
 #all_data = pd.read_csv('all_data_v7.0.1.csv')
@@ -46,7 +46,8 @@ binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
 dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
-scaler = preprocess.StandardScaler()
+# Why does row-based Normalization work? Maybe because it highlights each player's talent?
+scaler = preprocess.Normalizer()
 all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 #%%
