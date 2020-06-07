@@ -47,7 +47,7 @@ dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
 scaler = preprocess.MinMaxScaler()
-all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+#all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 #%%
 # 70/20/10 split.
@@ -61,14 +61,12 @@ val_set, test_set = train_test_split(val_test_set,
                                      random_state=36)
 
 val_test_set = None
-#all_data = None
 
 
 def split_X_y(dataframe):
   y = dataframe["P_OPS"]
   X = dataframe.drop(columns="P_OPS")
   return (X, y)
-
 
 train_X, train_y = split_X_y(train_set)
 val_X, val_y = split_X_y(val_set)
