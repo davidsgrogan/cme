@@ -13,6 +13,7 @@ import keras.layers as layers
 from keras.models import Sequential
 import keras.optimizers as optimizers
 from keras.callbacks import TensorBoard
+from keras.callbacks import ModelCheckpoint
 import keras.constraints
 
 import matplotlib.pyplot as plt
@@ -41,14 +42,13 @@ all_data = pd.read_csv('all_data_v7.0.1_min_10_AB.csv')
 #%%
 print("csv shape =", all_data.shape)
 
-# I guess MinMaxScaler would be a no-op on binary columns.
 binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
 dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
 # Why does row-based Normalization work? Maybe because it highlights each player's talent?
 scaler = preprocess.Normalizer()
-all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+#all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 #%%
 # 70/20/10 split.
@@ -132,7 +132,7 @@ print("Just printed model summary")
 
 start_time = time.time()
 
-tensor_board = TensorBoard(histogram_freq=1)
+mc = ModelCheckpoint("model.h5", monitor='val_mean_squared_error', mode='min', verbose=1, save_best_only=True)
 
 np.random.seed(345)
 tf.set_random_seed(123)
@@ -141,16 +141,15 @@ random.seed(345)
 history_object = model.fit(
     train_X,
     train_y,
-    epochs=300,
+    epochs=200,
     batch_size=64,
     verbose=2,
-    #callbacks=[tensor_board],
+    callbacks=[mc],
     shuffle=True,
     validation_data=(val_X, val_y))
 print("%d seconds to train the model" % (time.time() - start_time))
 
-os.remove("model.h5")
-model.save("model.h5")
+#model.save("model.h5")
 
 # %%
 
@@ -165,10 +164,13 @@ plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
 
 #%%
-import deeplift
+#import deeplift
 from deeplift.conversion import kerasapi_conversion as kc
 
-reference = np.full(shape=(train_X.shape[1],), fill_value=0.5)
+reference = np.mean(all_data)
+reference = reference.drop(labels="P_OPS")
+reference[list(binary_columns)] = 0.0
+
 
 deeplift_model = kc.convert_model_from_saved_files("model.h5")
 deeplift_contribs_func = deeplift_model.get_target_contribs_func(
@@ -176,7 +178,18 @@ deeplift_contribs_func = deeplift_model.get_target_contribs_func(
 #%%
 scores = deeplift_contribs_func(
     task_idx=0,
-    input_data_list=[train_X.iloc[0].to_numpy().reshape(1, 29)],
-    input_references_list=[reference.reshape(1, 29)],
-    batch_size=1,
+    input_data_list=[train_X],
+    input_references_list=[reference.to_numpy().reshape(1, 29)],
+    batch_size=500,
     progress_update=1)
+
+variable_to_average_score = dict(zip(reference.index.tolist(), np.mean(scores, axis=0)))
+
+#%%
+
+plt.bar(reference.index.tolist(), np.mean(scores, axis=0))
+#plt.legend(['Train', 'Validation'], loc='upper right')
+fig = plt.gcf()
+fig.set_size_inches(20,8)
+plt.savefig('bar_graph.png', bbox_inches='tight')
+plt.show()
