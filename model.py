@@ -8,6 +8,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import sklearn.preprocessing as preprocess
 import pandas as pd
+
+# deeplift requires TF 1.x and standalone Keras, not tf.keras.
 import tensorflow as tf
 import keras.layers as layers
 from keras.models import Sequential
@@ -21,7 +23,6 @@ import IPython.display
 
 import time
 import random
-import sys
 
 # https://keras.io/getting_started/faq/#how-can-i-obtain-reproducible-results-using-keras-during-development
 np.random.seed(345)
@@ -46,15 +47,14 @@ binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
 dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
-# Why does row-based Normalization work? Maybe because it highlights each player's talent?
-scaler = preprocess.Normalizer()
-#all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+scaler = preprocess.QuantileTransformer(output_distribution='normal')
+all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 #%%
 # 70/20/10 split.
 train_set, val_test_set = train_test_split(all_data,
                                            test_size=0.3,
-                                           random_state=35,
+                                           random_state=351,
                                            shuffle=True)
 
 val_set, test_set = train_test_split(val_test_set,
@@ -80,6 +80,10 @@ test_set = None
 print("training on %d columns" % len(train_X.columns), list(train_X.columns))
 
 #%%
+
+np.random.seed(345)
+tf.set_random_seed(123)
+random.seed(345)
 
 model = Sequential()
 
@@ -110,48 +114,42 @@ model.add(
 model.add(layers.BatchNormalization())
 model.add(layers.PReLU())
 
-# W_constraint makes val_mse go from 0.094 to 0.092.
-# That may be just a more favorable random # generation.
 model.add(
     layers.Dense(1,
-                 activation=None,
-                 W_constraint=keras.constraints.NonNeg()))
-model.add(layers.PReLU())
+                 activation=None
+    #             W_constraint=keras.constraints.NonNeg()
+))
+#model.add(layers.PReLU())
 
-adam_optimizer = optimizers.Adam(lr=0.0001)
+adam_optimizer = optimizers.Adam(lr=0.0002)
 model.compile(optimizer=adam_optimizer, loss='mse', metrics=['mse'])
 
-# keras.utils.plot_model(model,
-#                        to_file='test_keras_plot_model.png',
-#                        show_shapes=True)
-# display(IPython.display.Image('test_keras_plot_model.png'))
-print(model.summary())
-print("Just printed model summary")
-
-#%%
-
-start_time = time.time()
+keras.utils.plot_model(model,
+                      to_file='model.png',
+                      show_shapes=True)
+#display(IPython.display.Image('test_keras_plot_model.png'))
+#print(model.summary())
+#print("Just printed model summary")
 
 tensor_board = TensorBoard(histogram_freq=1)
-
 mc = ModelCheckpoint("model.h5", monitor='val_mean_squared_error', mode='min', verbose=1, save_best_only=True)
 
 np.random.seed(345)
 tf.set_random_seed(123)
 random.seed(345)
+#%%
 
+start_time = time.time()
 history_object = model.fit(
     train_X,
     train_y,
-    epochs=200,
+    epochs=180,
     batch_size=64,
     verbose=2,
     callbacks=[mc],
     shuffle=True,
     validation_data=(val_X, val_y))
 print("%d seconds to train the model" % (time.time() - start_time))
-
-#model.save("model.h5")
 
 # %%
 
@@ -160,7 +158,7 @@ omit_first = 10
 plt.plot(history_object.history['mean_squared_error'][omit_first:])
 plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
 plt.ylabel('Loss')
-plt.xlabel('Epoch')
+plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
 plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
@@ -171,12 +169,12 @@ from deeplift.conversion import kerasapi_conversion as kc
 
 reference = np.mean(all_data)
 reference = reference.drop(labels="P_OPS")
-reference[list(binary_columns)] = 0.0
+#reference[list(binary_columns)] = 0.5
 
 
 deeplift_model = kc.convert_model_from_saved_files("model.h5")
 deeplift_contribs_func = deeplift_model.get_target_contribs_func(
-    find_scores_layer_idx=0, target_layer_idx=-2)
+    find_scores_layer_idx=0, target_layer_idx=-1)
 #%%
 scores = deeplift_contribs_func(
     task_idx=0,
