@@ -262,6 +262,11 @@ my_plots <- lapply(names(cleaned_joint_data), function(var_x){
 plot_grid(plotlist = my_plots)
 ```
 
+```{r}
+ggcorr(cleaned_joint_data[1:17], label=TRUE, name="Pearson Correlation")
+```
+
+
 
 I'll do train/test split in python
 
