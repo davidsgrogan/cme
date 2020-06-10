@@ -167,8 +167,8 @@ plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
 plt.ylabel('MSE')
 plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
-plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.title("Both raw and hand-rolled features included")
+plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
 
 #%%
