@@ -47,14 +47,21 @@ binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
 dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
+no_hand_columns = all_data.loc[:, ~all_data.columns.str.startswith('Hand')]
+only_hand_columns = all_data.loc[:, all_data.columns.str.startswith('Hand') | all_data.columns.str.startswith('P_OPS')]
+
 scaler = preprocess.QuantileTransformer(output_distribution='normal')
 all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+
+# It's lame to manually select these by commenting code.
+#all_data = only_hand_columns
+#all_data = no_hand_columns
 
 #%%
 # 70/20/10 split.
 train_set, val_test_set = train_test_split(all_data,
                                            test_size=0.3,
-                                           random_state=351,
+                                           random_state=35,
                                            shuffle=True)
 
 val_set, test_set = train_test_split(val_test_set,
@@ -161,6 +168,7 @@ plt.ylabel('MSE')
 plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
 plt.savefig('cnn_loss.png', bbox_inches='tight')
+plt.title("Both raw and hand-rolled features included")
 plt.show()
 
 #%%
@@ -179,7 +187,7 @@ deeplift_contribs_func = deeplift_model.get_target_contribs_func(
 scores = deeplift_contribs_func(
     task_idx=0,
     input_data_list=[train_X],
-    input_references_list=[reference.to_numpy().reshape(1, 29)],
+    input_references_list=[reference.to_numpy().reshape(1, reference.shape[0])],
     batch_size=500,
     progress_update=1)
 
