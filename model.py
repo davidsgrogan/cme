@@ -110,13 +110,13 @@ model.add(
 model.add(layers.BatchNormalization())
 model.add(layers.PReLU())
 
-# W_constraint makes val_loss goes from 0.094 to 0.092.
+# W_constraint makes val_mse go from 0.094 to 0.092.
 # That may be just a more favorable random # generation.
 model.add(
     layers.Dense(1,
-                 activation='linear',
+                 activation=None,
                  W_constraint=keras.constraints.NonNeg()))
-#model.add(layers.LeakyReLU(alpha=0.1))
+model.add(layers.PReLU())
 
 adam_optimizer = optimizers.Adam(lr=0.0001)
 model.compile(optimizer=adam_optimizer, loss='mse', metrics=['mse'])
@@ -131,6 +131,8 @@ print("Just printed model summary")
 #%%
 
 start_time = time.time()
+
+tensor_board = TensorBoard(histogram_freq=1)
 
 mc = ModelCheckpoint("model.h5", monitor='val_mean_squared_error', mode='min', verbose=1, save_best_only=True)
 
@@ -174,7 +176,7 @@ reference[list(binary_columns)] = 0.0
 
 deeplift_model = kc.convert_model_from_saved_files("model.h5")
 deeplift_contribs_func = deeplift_model.get_target_contribs_func(
-    find_scores_layer_idx=0, target_layer_idx=-1)
+    find_scores_layer_idx=0, target_layer_idx=-2)
 #%%
 scores = deeplift_contribs_func(
     task_idx=0,
