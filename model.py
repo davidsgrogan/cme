@@ -157,7 +157,7 @@ print("%d seconds to train the model" % (time.time() - start_time))
 omit_first = 10
 plt.plot(history_object.history['mean_squared_error'][omit_first:])
 plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
-plt.ylabel('Loss')
+plt.ylabel('MSE')
 plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
 plt.savefig('cnn_loss.png', bbox_inches='tight')
