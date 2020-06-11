@@ -54,8 +54,8 @@ scaler = preprocess.QuantileTransformer(output_distribution='normal')
 all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 # It's lame to manually select these by commenting code.
-all_data = only_hand_columns
-#all_data = no_hand_columns
+#all_data = only_hand_columns
+all_data = no_hand_columns
 
 #%%
 # 70/20/10 split.
@@ -167,7 +167,7 @@ plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
 plt.ylabel('MSE')
 plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
-plt.title("Only hand features included")
+plt.title("No hand features included")
 plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
 
