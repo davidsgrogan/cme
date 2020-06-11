@@ -185,7 +185,7 @@ deeplift_contribs_func = deeplift_model.get_target_contribs_func(
     find_scores_layer_idx=0, target_layer_idx=-1)
 #%%
 scores = deeplift_contribs_func(
-    task_idx=0,
+    task_idx=0, # N/A for my scalar output.
     input_data_list=[train_X],
     input_references_list=[reference.to_numpy().reshape(1, reference.shape[0])],
     batch_size=500,
