@@ -89,9 +89,9 @@ print("training on %d columns" % len(train_X.columns), list(train_X.columns))
 
 #%%
 
-np.random.seed(3451)
-tf.set_random_seed(1231)
-random.seed(3451)
+np.random.seed(345)
+tf.set_random_seed(123)
+random.seed(345)
 
 model = Sequential()
 
@@ -142,9 +142,9 @@ keras.utils.plot_model(model,
 tensor_board = TensorBoard(histogram_freq=1)
 mc = ModelCheckpoint("model.h5", monitor='val_mean_squared_error', mode='min', verbose=1, save_best_only=True)
 
-np.random.seed(3451)
-tf.set_random_seed(1231)
-random.seed(3451)
+np.random.seed(3455)
+tf.set_random_seed(1235)
+random.seed(3455)
 #%%
 
 start_time = time.time()
@@ -173,31 +173,29 @@ plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
 
 #%%
-#import deeplift
 from deeplift.conversion import kerasapi_conversion as kc
-
-reference = np.mean(all_data)
-#reference = np.full(shape=(train_X.shape[1],), fill_value=0)
-reference = reference.drop(labels="P_OPS")
-#reference[list(binary_columns)] = 0.5
-
-
 deeplift_model = kc.convert_model_from_saved_files("model.h5")
 deeplift_contribs_func = deeplift_model.get_target_contribs_func(
     find_scores_layer_idx=0, target_layer_idx=-1)
 #%%
+
+#reference = np.mean(train_X)
+#reference = reference.to_numpy()
+
+reference = np.full(shape=(train_X.shape[1],), fill_value=0)
+
 scores = deeplift_contribs_func(
     task_idx=0, # N/A for my scalar output.
     input_data_list=[train_X],
-    input_references_list=[reference.to_numpy().reshape(1, reference.shape[0])],
+    input_references_list=[reference.reshape(1, reference.shape[0])],
     batch_size=500,
     progress_update=1)
 
-variable_to_average_score = dict(zip(reference.index.tolist(), np.mean(scores, axis=0)))
+variable_to_average_score = dict(zip(train_X.columns.tolist(), np.mean(scores, axis=0)))
 print(variable_to_average_score)
-#%%
 
-plt.bar(reference.index.tolist(), np.mean(scores, axis=0))
+#%%
+plt.bar(train_X.columns.tolist(), np.mean(scores, axis=0))
 #plt.legend(['Train', 'Validation'], loc='upper right')
 fig = plt.gcf()
 fig.set_size_inches(6,5)
