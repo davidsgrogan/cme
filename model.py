@@ -55,8 +55,8 @@ only_hand_columns = all_data.loc[:, all_data.columns.str.startswith('Hand') | al
 
 
 # It's lame to manually select these by commenting code.
-#all_data = only_hand_columns
-all_data = no_hand_columns
+all_data = only_hand_columns
+#all_data = no_hand_columns
 
 #%%
 # 70/20/10 split.
@@ -89,9 +89,9 @@ print("training on %d columns" % len(train_X.columns), list(train_X.columns))
 
 #%%
 
-np.random.seed(345)
-tf.set_random_seed(123)
-random.seed(345)
+np.random.seed(3451)
+tf.set_random_seed(1231)
+random.seed(3451)
 
 model = Sequential()
 
@@ -142,9 +142,9 @@ keras.utils.plot_model(model,
 tensor_board = TensorBoard(histogram_freq=1)
 mc = ModelCheckpoint("model.h5", monitor='val_mean_squared_error', mode='min', verbose=1, save_best_only=True)
 
-np.random.seed(345)
-tf.set_random_seed(123)
-random.seed(345)
+np.random.seed(3451)
+tf.set_random_seed(1231)
+random.seed(3451)
 #%%
 
 start_time = time.time()
@@ -168,7 +168,7 @@ plt.plot(history_object.history['val_mean_squared_error'][omit_first:])
 plt.ylabel('MSE')
 plt.xlabel('Epoch - %d' % omit_first)
 plt.legend(['Train', 'Validation'], loc='upper right')
-plt.title("No hand features included")
+plt.title("Only hand features included")
 plt.savefig('cnn_loss.png', bbox_inches='tight')
 plt.show()
 
@@ -194,12 +194,12 @@ scores = deeplift_contribs_func(
     progress_update=1)
 
 variable_to_average_score = dict(zip(reference.index.tolist(), np.mean(scores, axis=0)))
-
+print(variable_to_average_score)
 #%%
 
 plt.bar(reference.index.tolist(), np.mean(scores, axis=0))
 #plt.legend(['Train', 'Validation'], loc='upper right')
 fig = plt.gcf()
-fig.set_size_inches(20,8)
+fig.set_size_inches(6,5)
 plt.savefig('bar_graph.png', bbox_inches='tight')
 plt.show()
