@@ -81,6 +81,8 @@ train_X, train_y = split_X_y(train_set)
 val_X, val_y = split_X_y(val_set)
 test_X, test_y = split_X_y(test_set)
 
+test_y = test_y.to_numpy()
+
 train_set = None
 val_set = None
 test_set = None
@@ -205,3 +207,8 @@ fig = plt.gcf()
 fig.set_size_inches(6,5)
 plt.savefig('bar_graph.png', bbox_inches='tight')
 plt.show()
+
+#%% test set
+pred_y = model.predict(test_X)
+test_y = test_y.reshape(test_y.shape[0], 1)
+test_mse = np.mean((pred_y - test_y)**2)
