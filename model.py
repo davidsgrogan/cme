@@ -47,11 +47,12 @@ binary_columns = set(["AL", "SameTeam", "bats_right", "bats_switch"])
 dont_standardize = set([*binary_columns, "P_OPS"])
 do_standardize = set(all_data.columns.to_list()) - dont_standardize
 
+scaler = preprocess.QuantileTransformer(output_distribution='normal')
+all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
+
 no_hand_columns = all_data.loc[:, ~all_data.columns.str.startswith('Hand')]
 only_hand_columns = all_data.loc[:, all_data.columns.str.startswith('Hand') | all_data.columns.str.startswith('P_OPS')]
 
-scaler = preprocess.QuantileTransformer(output_distribution='normal')
-all_data[list(do_standardize)] = scaler.fit_transform(all_data[do_standardize])
 
 # It's lame to manually select these by commenting code.
 #all_data = only_hand_columns
@@ -176,6 +177,7 @@ plt.show()
 from deeplift.conversion import kerasapi_conversion as kc
 
 reference = np.mean(all_data)
+#reference = np.full(shape=(train_X.shape[1],), fill_value=0)
 reference = reference.drop(labels="P_OPS")
 #reference[list(binary_columns)] = 0.5
 
