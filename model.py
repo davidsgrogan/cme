@@ -180,9 +180,10 @@ deeplift_contribs_func = deeplift_model.get_target_contribs_func(
 #%%
 
 #reference = np.mean(train_X)
-#reference = reference.to_numpy()
+reference = np.min(train_X)
+reference = reference.to_numpy()
 
-reference = np.full(shape=(train_X.shape[1],), fill_value=0)
+#reference = np.full(shape=(train_X.shape[1],), fill_value=0)
 
 scores = deeplift_contribs_func(
     task_idx=0, # N/A for my scalar output.
@@ -193,6 +194,9 @@ scores = deeplift_contribs_func(
 
 variable_to_average_score = dict(zip(train_X.columns.tolist(), np.mean(scores, axis=0)))
 print(variable_to_average_score)
+
+# {'Hand_OBP': 0.5315988, 'Hand_SLG': 0.13289687, 'Hand_BABIP': -0.056552917,
+# 'Hand_ISO': -0.3444691, 'Hand_SBPerG': 0.17026354}
 
 #%%
 plt.bar(train_X.columns.tolist(), np.mean(scores, axis=0))
